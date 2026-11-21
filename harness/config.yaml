@@ -6,3 +6,8 @@ fields:
 boards:
 - enrichment
 - freshness
+limits:
+  research_timeout_seconds: 180  # harness/adapters/_research.py TIMEOUT; a setup's settings.timeout_seconds overrides it
+  research_attempts: 4  # harness/adapters/_research.py ATTEMPTS
+  extraction_timeout_seconds: 180  # harness/adapters/_extraction.py default; a setup's extractor.timeout_seconds overrides it
+  extraction_max_output_tokens: 4000  # harness/adapters/_extraction.py default; a setup's extractor.max_output_tokens overrides it
