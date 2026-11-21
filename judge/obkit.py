@@ -1,4 +1,5 @@
-"""obkit's grade hook: the repo's own field grader. An answer passes when all three graded fields are correct."""
+"""obkit's grade hook: the repo's own field grader. Each graded field is one verdict: True, False, or None when the grader
+says the ground truth cannot be scored for it."""
 from __future__ import annotations
 
 import json
@@ -8,10 +9,10 @@ from harness.models import FIELDS
 
 from .grader import grade_row
 
+VERDICT = {"correct": True, "wrong": False, "not_scoreable": None}
+NAMES = {"stage": "latest_stage", "amount": "amount", "date": "announced_on"}
 
-def grade(question: dict[str, Any], answer: str) -> bool:
+
+def grade(question: dict[str, Any], answer: str) -> dict[str, bool | None]:
     verdicts = grade_row({f: question[f] for f in FIELDS}, json.loads(answer))
-    if "not_scoreable" in verdicts.values():
-        # The repo's board excludes such a row; obkit has no exclusion, so it is an error to count against judge_error_max.
-        raise ValueError(f"ground truth cannot be scored: {verdicts}")
-    return all(v == "correct" for v in verdicts.values())
+    return {name: VERDICT[verdicts[field]] for name, field in NAMES.items()}
