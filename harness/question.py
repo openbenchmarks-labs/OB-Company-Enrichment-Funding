@@ -43,14 +43,18 @@ def instruction(company: Company) -> str:
     )
 
 
+_AMOUNT = re.compile(r"^\s*(?:[A-Z]{3}\s*|[$€£¥])?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMB])?\s*(?:[A-Z]{3})?\s*$", re.IGNORECASE)
+_SCALE = {"K": 1e3, "M": 1e6, "B": 1e9}
+
+
 def _number(value: Any) -> int | float | None:
-    """A positive amount as a number. Strings such as "5000000" are converted; anything else becomes None."""
+    """A positive amount as a number. Strings such as "5000000", "9M", "$4.35M" or "9000000 USD" are converted; anything else becomes None."""
     if value is None or isinstance(value, bool):
         return None
-    try:
-        number = float(str(value).replace(",", ""))
-    except ValueError:
+    match = _AMOUNT.match(str(value).replace(",", ""))
+    if not match:
         return None
+    number = float(match.group(1)) * _SCALE.get((match.group(2) or "").upper(), 1)
     if number != number or number <= 0:
         return None
     return int(number) if number.is_integer() else number
