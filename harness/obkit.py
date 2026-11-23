@@ -127,7 +127,9 @@ def _code_digest(files: list[Path]) -> str:
 
 def _packages(files: list[Path]) -> dict[str, str]:
     """The installed version of every third-party package `files` import (an SDK or parsing library on the answer
-    path), so a different version of one is a different setup version."""
+    path), so a different version of one is a different setup version. Raises when the venv differs from a pin in
+    requirements.txt or an import has no installed package, so a stale venv is refused instead of re-versioning setups."""
+    _check_pins()
     names = {
         name.split(".")[0]
         for path in files for node in ast.walk(ast.parse(path.read_bytes()))
@@ -135,7 +137,22 @@ def _packages(files: list[Path]) -> dict[str, str]:
                      else [node.module] if isinstance(node, ast.ImportFrom) and not node.level and node.module else [])
     } - set(sys.stdlib_module_names) - {"harness"}
     owners = importlib.metadata.packages_distributions()
-    return {dist: importlib.metadata.version(dist) for name in sorted(names) for dist in owners.get(name, [])}
+    if missing := sorted(n for n in names if not owners.get(n)):
+        raise RuntimeError(f"no installed package provides {', '.join(missing)}: run uv pip install -r requirements.txt")
+    return {dist: importlib.metadata.version(dist) for name in sorted(names) for dist in owners[name]}
+
+
+def _check_pins() -> None:
+    installed = {_canon(d.metadata["Name"]): d.version for d in importlib.metadata.distributions()}
+    pins = re.findall(r"^([A-Za-z0-9_.-]+)==([^\s;]+)", (HARNESS.parent / "requirements.txt").read_text(), re.M)
+    if wrong := [f"{name} {installed[_canon(name)]} (pinned {pin})" for name, pin in pins
+                 if _canon(name) in installed and installed[_canon(name)] != pin]:
+        raise RuntimeError(f"installed versions differ from requirements.txt: {', '.join(wrong)}: "
+                           "run uv pip install -r requirements.txt")
+
+
+def _canon(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def _imported(start: Path) -> set[Path]:
