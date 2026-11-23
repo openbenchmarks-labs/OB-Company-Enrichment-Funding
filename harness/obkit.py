@@ -106,25 +106,58 @@ def probe(setup: str) -> dict[str, Any]:
 
 
 def _code_digest(adapter: Any) -> str:
-    """sha256 of the code that turns a vendor's reply into this setup's answer: its adapter module, the shared adapter
-    helpers and the harness modules. They are compared as syntax trees, so comments, docstrings and layout do not count;
-    a parsing change moves the digest and the setup answers again."""
-    own = Path(sys.modules[type(adapter).__module__].__file__)
-    shared = sorted(HARNESS.glob("adapters/_*.py")) + sorted(p for p in HARNESS.glob("*.py") if p.name not in NOT_ANSWER_CODE)
+    """sha256 of the code that turns a vendor's reply into this setup's answer: its adapter module and every harness
+    module it imports, followed through their imports, plus this hook and the registry. Each file is compared as
+    normalized source (docstrings dropped, `ast.unparse`), so comments, docstrings and layout do not count, and every
+    Python version gives the same digest. A parsing change moves the digest and the setup answers again."""
+    own = Path(sys.modules[type(adapter).__module__].__file__).resolve()
     digest = hashlib.sha256()
-    for path in [own, *shared]:
-        digest.update(f"{path.relative_to(HARNESS)}\n{_syntax(path)}\n".encode())
+    for path in sorted(_imported(own) | {HARNESS / "obkit.py", HARNESS / "registry.py"}):
+        digest.update(f"{path.relative_to(HARNESS).as_posix()}\n{_source(path)}\n".encode())
     return digest.hexdigest()
 
 
-def _syntax(path: Path) -> str:
-    tree = ast.parse(path.read_text())
+def _imported(start: Path) -> set[Path]:
+    """`start` and the harness modules it imports, directly or through other harness modules."""
+    seen: set[Path] = set()
+    todo = [start]
+    while todo:
+        path = todo.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        package = path.relative_to(HARNESS).parent.parts
+        for node in ast.walk(ast.parse(path.read_bytes())):
+            if isinstance(node, ast.ImportFrom) and node.level:
+                base = [*package[:len(package) - node.level + 1], *(node.module.split(".") if node.module else [])]
+            elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "harness":
+                base = node.module.split(".")[1:]
+            elif isinstance(node, ast.Import):
+                todo += _module_files([[*n.name.split(".")[1:]] for n in node.names if n.name.split(".")[0] == "harness"])
+                continue
+            else:
+                continue
+            todo += _module_files([base, *[[*base, alias.name] for alias in node.names]])
+    return seen
+
+
+def _module_files(names: list[list[str]]) -> list[Path]:
+    files = []
+    for parts in names:
+        for path in (HARNESS.joinpath(*parts, "__init__.py"), HARNESS.joinpath(*parts[:-1], f"{parts[-1]}.py") if parts else None):
+            if path is not None and path.is_file() and path.name not in NOT_ANSWER_CODE:
+                files.append(path.resolve())
+    return files
+
+
+def _source(path: Path) -> str:
+    tree = ast.parse(path.read_bytes())
     for node in ast.walk(tree):
         body = getattr(node, "body", None)
         if isinstance(body, list) and body and isinstance(body[0], ast.Expr) \
                 and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
             node.body = body[1:] or [ast.Pass()]
-    return ast.dump(tree, include_attributes=False)
+    return ast.unparse(tree)
 
 
 def _lookup(adapter: Any, company: Company) -> Any:
