@@ -20,3 +20,6 @@
 {"set": "public", "question": "stripe.com", "answer": "{\"latest_stage\": \"Series H\", \"amount\": 6500000000, \"announced_on\": \"2023-03-15\"}", "expected": {"stage": false}, "kind": "planted"}
 {"set": "public", "question": "linear.app", "answer": "{\"latest_stage\": \"Series A/B\", \"amount\": 35000000, \"announced_on\": \"2023-09-12\"}", "expected": {"stage": false}, "kind": "planted"}
 {"set": "public", "question": "vercel.com", "answer": "{\"latest_stage\": \"Series E and debt\", \"amount\": 250000000, \"announced_on\": \"2024-05-16\"}", "expected": {"stage": false}, "kind": "planted"}
+{"set": "public", "question": "linear.app", "answer": "{\"latest_stage\": \"Series B & Series C\", \"amount\": 35000000, \"announced_on\": \"2023-09-12\"}", "expected": {"stage": false}, "kind": "planted"}
+{"set": "public", "question": "linear.app", "answer": "{\"latest_stage\": \"Series B plus debt\", \"amount\": 35000000, \"announced_on\": \"2023-09-12\"}", "expected": {"stage": false}, "kind": "planted"}
+{"set": "public", "question": "supabase.com", "answer": "{\"latest_stage\": \"Series C, Series D\", \"amount\": 80000000, \"announced_on\": \"2024-09-25\"}", "expected": {"stage": false}, "kind": "planted"}

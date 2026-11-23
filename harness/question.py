@@ -43,26 +43,30 @@ def instruction(company: Company) -> str:
     )
 
 
-# A number with an optional currency sign or uppercase ISO code and a K/M/B suffix: "9M", "$4.35M", "€10M", "9000000 USD".
-_AMOUNT = re.compile(r"^\s*([$€£]|[A-Z]{3})?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMBkmb])?\s*([A-Z]{3})?\s*$")
+# A number with an optional currency sign or ISO code and a K/M/B suffix: "9M", "$4.35M", "€10M", "9000000 usd".
+_AMOUNT = re.compile(r"^\s*([$€£]|[A-Za-z]{3})?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMBkmb])?\s*([A-Za-z]{3})?\s*$")
 _THOUSANDS = re.compile(r"(?<=\d),(?=\d{3}\b)")
 _SCALE = {"K": 1e3, "M": 1e6, "B": 1e9}
 CURRENCY_SIGNS = {"$": "USD", "€": "EUR", "£": "GBP"}
+# Three-letter scale words, not currencies: "5 mln" is five million of an unknown currency, not 5 of "MLN".
+_NOT_CURRENCY = {"MLN", "MIO", "MIL", "BLN", "BIL", "MRD", "THS"}
 
 
 def _amount(value: Any) -> tuple[int | float | None, str | None]:
-    """A positive amount and the currency its text names. Strings such as "5000000", "9M", "€10M" or "9000000 USD" are
-    converted; anything else, such as "5 mln", is (None, None)."""
+    """A positive amount and the currency its text names. Strings such as "5000000", "9M", "€10M", "$5M USD" or
+    "9000000 usd" are converted; anything else, such as "5 mln" or "$5M EUR", is (None, None)."""
     if value is None or isinstance(value, bool):
         return None, None
     match = _AMOUNT.match(_THOUSANDS.sub("", str(value)))
-    if not match or (match.group(1) and match.group(4)):
+    if not match:
+        return None, None
+    codes = {CURRENCY_SIGNS.get(c, c.upper()) for c in (match.group(1), match.group(4)) if c}
+    if len(codes) > 1 or codes & _NOT_CURRENCY:
         return None, None
     number = float(match.group(2)) * _SCALE.get((match.group(3) or "").upper(), 1)
     if number != number or number <= 0:
         return None, None
-    code = match.group(1) or match.group(4)
-    return (int(number) if number.is_integer() else number), CURRENCY_SIGNS.get(code, code)
+    return (int(number) if number.is_integer() else number), (codes.pop() if codes else None)
 
 
 def funding_fields(normalized: dict[str, Any]) -> dict[str, Any]:

@@ -10,5 +10,5 @@ Open decisions:
 - Raise `budget_usd` above 0 and source `answer_usd` (Fenil).
 - The public set has 4 companies. The obkit contract asks for at least 10. Adding questions changes the public set, so it needs a decision.
 - Scoring amount and date on the board changes the published number (Fenil).
-- A question whose ground truth names no stage has no verdict, which obkit records as a judge error. Leave such questions out of a set; ground truth fixes go into the set itself.
+- A question whose ground truth names no stage cannot be graded on the board; the `contract` hook refuses a set that holds one, so drop or relabel it before `obkit add-set`.
 - Cost of failed calls: a vendor error row records 0 cost. Spend on those calls is not counted.

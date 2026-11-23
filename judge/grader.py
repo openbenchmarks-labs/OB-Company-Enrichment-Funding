@@ -16,10 +16,13 @@ ALIASES = json.loads((HERE / "stage_aliases.json").read_text())
 
 # A Series letter: "Series B", "series_b_plus", "Series B-1 bridge", "B", "B4", "B+", "B轮".
 SERIES_RE = re.compile(r"^series ?([a-z])(?![a-z])")
-BARE_SERIES_RE = re.compile(r"^([a-z])(?:\d+|\++)?$")
-CJK_SERIES_RE = re.compile(r"^([a-z])\d*\+?轮")
+BARE_SERIES_RE = re.compile(r"^([a-h])(?:\d+|\++)?$")
+CJK_SERIES_RE = re.compile(r"^([a-h])\d*\+?轮")
+# A numbered or lettered seed round: "Seed 1", "seed_2", "Seed II", "Seed B".
+SEED_RE = re.compile(r"^seed (?:\d+|[ivx]+|[a-z])$")
 HEAD_SPLIT_RE = re.compile(r"\s+[-–]\s+")
-ALT_SPLIT_RE = re.compile(r"\s*/\s*|\s+and\s+|\s+or\s+")
+# Labels joined into one answer: "Series A/B", "Seed and Series A", "Series A & Series B", "B, C", "A plus debt".
+ALT_SPLIT_RE = re.compile(r"\s*[/,;]\s*|\s+[&+]\s+|\s+(?:and|or|plus|to)\s+")
 PAREN_RE = re.compile(r"\([^)]*\)")
 DROP_TOKENS = ("round", "financing")
 
@@ -62,6 +65,7 @@ def _build_stage_map() -> dict[str, str]:
     return {label: SAME_CLASS.get(name, name) for label, name in mapping.items()}
 
 
+CONTAINS = ADDITIONS.get("contains") or {}
 SAME_CLASS = {name: group[0] for group in ADDITIONS.get("same_class") or [] for name in group}
 STAGE_MAP = _build_stage_map()
 KEY_ACCEPTS = {
@@ -78,7 +82,12 @@ def canonical_stage(raw: str | None) -> str:
     m = SERIES_RE.match(norm) or BARE_SERIES_RE.match(norm) or CJK_SERIES_RE.match(_unify_parens(str(raw)).lower().strip())
     if m:
         return f"series_{m.group(1)}"
-    return STAGE_MAP.get(norm, "")
+    if SEED_RE.match(norm):
+        return "seed_group"
+    if norm in STAGE_MAP:
+        return STAGE_MAP[norm]
+    # A label naming a stake ("minority stake sale", "acquisition of a 49 per cent stake") is private equity.
+    return next((name for word, name in CONTAINS.items() if word in norm.split()), "")
 
 
 def _parts(raw: str) -> list[str]:

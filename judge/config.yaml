@@ -12,11 +12,6 @@ judge:
         sha256: 36e16c138f678f4ca58deac145bd1a5cf40574a410264c819086bb270d40dd0c
       additions:
         aliases:
-          acquisition of a 49 per cent stake: pe_group
-          b3 and b4: series_b
-          b3/b4: series_b
-          b3/b4轮融资: series_b
-          buyout/lbo: pe_group
           commercial paper: debt
           commercial paper series 1: debt
           corporate equity: pe_group
@@ -28,19 +23,13 @@ judge:
           growth capital: pe_group
           growth capital commitment: pe_group
           growth capital investment: pe_group
-          growth equity + client investment: pe_group
-          growth equity and client investment: pe_group
           growth equity investment: pe_group
-          growth equity plus client investment: pe_group
           growth funding: pe_group
           hybrid series a: series_a
           hybrid series b: series_b
           hybrid series c: series_c
           lbo: pe_group
           minority investment: pe_group
-          minority stake: pe_group
-          minority stake acquisition: pe_group
-          minority stake sale: pe_group
           non control growth equity investment: pe_group
           post ipo private placement: private_placement
           pre a: seed_group
@@ -50,12 +39,11 @@ judge:
           private equity growth investment: pe_group
           private equity investment: pe_group
           private equity recapitalization: pe_group
+          reg cf: crowd_group
           regulation crowdfunding: crowd_group
           retail investment: crowd_group
-          seed 1: seed_group
-          seed 3: seed_group
-          seed b: seed_group
-          seed extension/top up: seed_group
+          secondary: secondary_market
+          secondary transaction: secondary_market
           series seed: seed_group
           strategic equity: pe_group
           strategic growth: pe_group
@@ -63,6 +51,8 @@ judge:
           strategic growth investment: pe_group
           strategic minority investment: pe_group
           upsized initial public offering: ipo
+        contains:
+          stake: pe_group
         same_class:
         - - post_ipo
           - post_ipo_equity
@@ -80,7 +70,7 @@ judge:
     amount:
       comparator: amount
       percent: 5
-      currency: key_currency
+      currency: compare_flag_nonusd
     announced_on:
       comparator: date
       days: 7
