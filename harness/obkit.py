@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import hashlib
+import importlib.metadata
 import json
 import os
 import re
@@ -101,20 +102,40 @@ def probe(setup: str) -> dict[str, Any]:
     if not sent:
         raise RuntimeError(f"{setup} sent no request for the probe company")
     sent["settings"] = {k: v for k, v in adapter.settings.items() if k not in PACING}
-    sent["code"] = _code_digest(adapter)
+    files = _answer_files(adapter)
+    sent["code"] = _code_digest(files)
+    sent["packages"] = _packages(files)
     return sent
 
 
-def _code_digest(adapter: Any) -> str:
-    """sha256 of the code that turns a vendor's reply into this setup's answer: its adapter module and every harness
-    module it imports, followed through their imports, plus this hook and the registry. Each file is compared as
-    normalized source (docstrings dropped, `ast.unparse`), so comments, docstrings and layout do not count, and every
-    Python version gives the same digest. A parsing change moves the digest and the setup answers again."""
+def _answer_files(adapter: Any) -> list[Path]:
+    """The code that turns a vendor's reply into this setup's answer: its adapter module and every harness module it
+    imports, followed through their imports, plus this hook and the registry."""
     own = Path(sys.modules[type(adapter).__module__].__file__).resolve()
+    return sorted(_imported(own) | {HARNESS / "obkit.py", HARNESS / "registry.py"})
+
+
+def _code_digest(files: list[Path]) -> str:
+    """sha256 of `files`, each as normalized source (docstrings dropped, `ast.unparse`), so comments, docstrings and
+    layout do not count, and every Python version gives the same digest. A parsing change moves the digest and the
+    setup answers again."""
     digest = hashlib.sha256()
-    for path in sorted(_imported(own) | {HARNESS / "obkit.py", HARNESS / "registry.py"}):
+    for path in files:
         digest.update(f"{path.relative_to(HARNESS).as_posix()}\n{_source(path)}\n".encode())
     return digest.hexdigest()
+
+
+def _packages(files: list[Path]) -> dict[str, str]:
+    """The installed version of every third-party package `files` import (an SDK or parsing library on the answer
+    path), so a different version of one is a different setup version."""
+    names = {
+        name.split(".")[0]
+        for path in files for node in ast.walk(ast.parse(path.read_bytes()))
+        for name in ([n.name for n in node.names] if isinstance(node, ast.Import)
+                     else [node.module] if isinstance(node, ast.ImportFrom) and not node.level and node.module else [])
+    } - set(sys.stdlib_module_names) - {"harness"}
+    owners = importlib.metadata.packages_distributions()
+    return {dist: importlib.metadata.version(dist) for name in sorted(names) for dist in owners.get(name, [])}
 
 
 def _imported(start: Path) -> set[Path]:
