@@ -33,5 +33,5 @@ The same adapters and grader also run through obkit 0.5.1 (`harness/obkit.py`, `
 - **Keep folders strictly separated:** Dataset info in `data/`; execution in `harness/`; per-tool configs in `tools/<tool>.yaml`; grading in `judge/`.
 - **Adding or tuning a tool:** Create or edit `tools/<tool>.yaml`. A new tool also needs `harness/adapters/<tool>.py`. Then run `selftest`.
 - **No secrets or raw run logs in git:** Keep API keys in `.env` and run outputs in `runs/` (both gitignored).
-- **Dependencies are pinned:** list direct ones in `requirements.in`, then `uv pip compile --universal --no-header requirements.in -o requirements.txt`. obkit refuses a venv that differs from `requirements.txt`, since package versions are part of each setup's version.
+- **Dependencies are pinned:** list direct ones in `harness/requirements.in`, then `uv pip compile --universal --no-header harness/requirements.in -o requirements.txt`. obkit refuses a venv that differs from `requirements.txt`, since package versions are part of each setup's version.
 - **Consistent terminology:** Use `tool`, `setup`, `question`, `ground truth`, `board`, `main score`.
