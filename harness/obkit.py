@@ -1,13 +1,16 @@
 """obkit hooks: one setup's answer per company, what the setups see first, and the request each setup sends."""
 from __future__ import annotations
 
+import ast
 import contextlib
 import hashlib
 import json
 import os
 import re
 import subprocess
+import sys
 import threading
+from pathlib import Path
 from typing import Any
 from unittest import mock
 
@@ -21,6 +24,9 @@ from .runner import _Pacer
 PROBE_COMPANY = Company("example.com", "Example Company")
 # Settings that pace requests and change no answer, so they stay out of the setup's version.
 PACING = ("max_workers", "seconds_between_requests", "domains_per_call", "domains_per_request")
+HARNESS = Path(__file__).resolve().parent
+# Harness modules that schedule requests and change no answer.
+NOT_ANSWER_CODE = ("run.py", "runner.py")
 _GATES: dict[str, tuple[_Pacer, Any]] = {}
 _GATES_LOCK = threading.Lock()
 
@@ -95,7 +101,30 @@ def probe(setup: str) -> dict[str, Any]:
     if not sent:
         raise RuntimeError(f"{setup} sent no request for the probe company")
     sent["settings"] = {k: v for k, v in adapter.settings.items() if k not in PACING}
+    sent["code"] = _code_digest(adapter)
     return sent
+
+
+def _code_digest(adapter: Any) -> str:
+    """sha256 of the code that turns a vendor's reply into this setup's answer: its adapter module, the shared adapter
+    helpers and the harness modules. They are compared as syntax trees, so comments, docstrings and layout do not count;
+    a parsing change moves the digest and the setup answers again."""
+    own = Path(sys.modules[type(adapter).__module__].__file__)
+    shared = sorted(HARNESS.glob("adapters/_*.py")) + sorted(p for p in HARNESS.glob("*.py") if p.name not in NOT_ANSWER_CODE)
+    digest = hashlib.sha256()
+    for path in [own, *shared]:
+        digest.update(f"{path.relative_to(HARNESS)}\n{_syntax(path)}\n".encode())
+    return digest.hexdigest()
+
+
+def _syntax(path: Path) -> str:
+    tree = ast.parse(path.read_text())
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if isinstance(body, list) and body and isinstance(body[0], ast.Expr) \
+                and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+            node.body = body[1:] or [ast.Pass()]
+    return ast.dump(tree, include_attributes=False)
 
 
 def _lookup(adapter: Any, company: Company) -> Any:

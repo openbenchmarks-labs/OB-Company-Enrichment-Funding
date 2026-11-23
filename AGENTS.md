@@ -22,7 +22,7 @@ uv venv && uv pip install -r requirements.txt
 
 ## obkit
 
-The same adapters and grader also run through obkit 0.4.0 (`harness/obkit.py`, `judge/obkit.py`). Install it into the same venv with `uv pip install "obkit @ git+https://github.com/openbenchmarks-labs/obkit@v0.4.0"`.
+The same adapters and grader also run through obkit 0.5.1 (`harness/obkit.py`, `judge/obkit.py`). Install it into the same venv with `uv pip install "obkit @ git+https://github.com/openbenchmarks-labs/obkit@v0.5.1"`.
 
 - `.venv/bin/obkit check`: validate the benchmark layout, hooks and selftest. Prints `check: ok` when clean.
 - `.venv/bin/obkit go --set public --tools <setup> --dry`: run one setup with canned replies, no network, no spend, then judge it and print the board.
