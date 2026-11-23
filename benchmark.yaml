@@ -1,24 +1,7 @@
 name: OB-Company-Funding
-serves: Buyers choosing a company-funding data tool or search API who need each company's latest funding round.
-win: The latest round's stage, amount, and announced date match ground truth for more companies than the other setups.
-obkit: 0.5.1
-sets:
-  public:
-    path: data/sample.jsonl
-question_id: domain
-split_axes:
-- latest_stage
-split_gap_max: 0.1
-window_hours: 24
-concurrency: 4
-repeats: 1
-budget_usd: 0
-refresh_days: 30
-not_measured_max: 0.1
-judge_error_max: 0.05
-hooks:
-  selftest: python -B -m harness.run selftest --tasks data/sample.jsonl
-  answer: harness.obkit:answer
-  contract: harness.obkit:contract
-  probe: harness.obkit:probe
-  grade: judge.obkit:grade
+order:
+  serves: Buyers choosing a company-funding data tool or search API who need each company's latest funding round.
+  win: The latest round's stage, amount, and announced date match ground truth for more companies than the other setups.
+  budget_usd: 0
+  refresh_days: 30
+  not_measured_max: 0.1

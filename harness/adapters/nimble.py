@@ -79,7 +79,7 @@ class Nimble(ResearchAdapter):
             state = self.call("GET", url, headers, timeout=min(REQUEST_TIMEOUT_SECONDS, remaining())).body or {}
             raw["polls"].append(state)
         if state["status"] != "completed":
-            raise ValueError(f"Nimble agent run {state['status']}: {state.get('error') or state.get('error_message') or ''}")
+            raise RuntimeError(f"Nimble agent run {state['status']}: {state.get('error') or state.get('error_message') or ''}")
         result = self.call("GET", url + "/result", headers, timeout=min(REQUEST_TIMEOUT_SECONDS, remaining())).body or {}
         raw["response"] = result
         output = result.get("output") if isinstance(result, dict) else None

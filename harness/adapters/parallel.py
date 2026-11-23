@@ -32,9 +32,7 @@ class Parallel(ResearchAdapter):
         }
         started = time.perf_counter()
         created = self.call("POST", "https://api.parallel.ai/v1/tasks/runs", headers, payload).body or {}
-        run_id = created.get("run_id")
-        if not run_id:
-            raise ValueError("Parallel returned no run_id")
+        run_id = created["run_id"]
         for _ in range(TASK_POLLS):
             # 202 and 404 mean the run is not ready yet.
             response = self.call("GET", f"https://api.parallel.ai/v1/tasks/runs/{run_id}/result", headers,
