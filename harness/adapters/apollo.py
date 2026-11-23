@@ -5,6 +5,7 @@ from typing import Any
 
 from ..http_client import Response
 from ..models import Company
+from ..question import CURRENCY_SIGNS
 from ._common import DataApiAdapter, latest_round
 
 
@@ -24,7 +25,9 @@ class Apollo(DataApiAdapter):
         newest = max(events, key=lambda e: str(e.get("date") or ""), default={})
         org_date = item.get("latest_funding_round_date")
         same_round = not org_date or str(newest.get("date") or "")[:10] == str(org_date)[:10]
-        if not same_round or newest.get("currency") not in ("$", "USD"):
+        currency = newest.get("currency")
+        result["currency"] = CURRENCY_SIGNS.get(currency, currency) if same_round else None
+        if not same_round:
             result["latest_amount"] = None
         result["latest_stage"] = item.get("latest_funding_stage") or result["latest_stage"]
         result["latest_date"] = org_date or result["latest_date"]

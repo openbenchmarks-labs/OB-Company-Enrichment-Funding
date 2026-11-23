@@ -16,7 +16,7 @@ The benchmark evaluates providers across two separate boards based on round age:
 Every provider response is graded on three core fields (`judge/config.yaml`):
 
 - `latest_stage`: Funding stage, normalized with stage equivalence rules (`judge/stage_aliases.json`).
-- `amount`: Round size in USD (exact match within ±5% tolerance).
+- `amount`: Round size within ±5%, in the ground truth's currency when both name one.
 - `announced_on`: Announced date in `YYYY-MM-DD` (exact match within ±7 days tolerance).
 
 The live board ranks providers on latest funding stage. Providers are scored against the company observations they were actually measured on, with 95% confidence intervals computed in `judge/grader.py`.

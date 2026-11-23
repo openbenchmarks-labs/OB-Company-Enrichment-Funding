@@ -12,43 +12,57 @@ judge:
         sha256: 36e16c138f678f4ca58deac145bd1a5cf40574a410264c819086bb270d40dd0c
       additions:
         aliases:
-          bridge: nostage
-          capital commitment: nostage
-          capital raise: nostage
+          acquisition of a 49 per cent stake: pe_group
+          b3 and b4: series_b
+          b3/b4: series_b
+          b3/b4轮融资: series_b
+          buyout/lbo: pe_group
+          commercial paper: debt
+          commercial paper series 1: debt
           corporate equity: pe_group
+          corporate majority: pe_group
           crowdfunding: crowd_group
-          early stage funding: nostage
-          equity issuance: nostage
-          equity raise: nostage
-          final investment decision: nostage
-          fundraise: nostage
+          crowdfunding equity: crowd_group
+          grant funding: crowd_group
           growth: pe_group
           growth capital: pe_group
+          growth capital commitment: pe_group
+          growth capital investment: pe_group
+          growth equity + client investment: pe_group
+          growth equity and client investment: pe_group
           growth equity investment: pe_group
+          growth equity plus client investment: pe_group
           growth funding: pe_group
-          hybrid: nostage
+          hybrid series a: series_a
+          hybrid series b: series_b
+          hybrid series c: series_c
+          lbo: pe_group
           minority investment: pe_group
           minority stake: pe_group
+          minority stake acquisition: pe_group
+          minority stake sale: pe_group
+          non control growth equity investment: pe_group
+          post ipo private placement: private_placement
+          pre a: seed_group
+          pre ipo funding: pre_ipo
           pre series b: pre_series_b
-          primary equity: nostage
-          private investment: nostage
-          reg cf: crowd_group
+          private equity growth: pe_group
+          private equity growth investment: pe_group
+          private equity investment: pe_group
+          private equity recapitalization: pe_group
           regulation crowdfunding: crowd_group
           retail investment: crowd_group
-          safe: nostage
-          safe note: nostage
-          secondary: secondary_market
-          secondary transaction: secondary_market
-          series 1: nostage
-          series 2: nostage
-          series 3: nostage
-          share issuance: nostage
-          simple agreement for future equity: nostage
-          stock issuance: nostage
-          stock/share issuance: nostage
-          strategic or corporate: pe_group
-          structured: nostage
-          structured finance: nostage
+          seed 1: seed_group
+          seed 3: seed_group
+          seed b: seed_group
+          seed extension/top up: seed_group
+          series seed: seed_group
+          strategic equity: pe_group
+          strategic growth: pe_group
+          strategic growth equity investment: pe_group
+          strategic growth investment: pe_group
+          strategic minority investment: pe_group
+          upsized initial public offering: ipo
         same_class:
         - - post_ipo
           - post_ipo_equity
@@ -61,49 +75,12 @@ judge:
       rules:
         blank_key: not_scoreable
         key_alternatives: true
-        series_alternatives_strict: true
-        known_classes_settled: true
         key_no_stage: not_scoreable
         undisclosed_key: not_scoreable
-        rescue: null
-      model:
-        question: "You are a strict evaluator for a company-funding benchmark. Evaluate each record independently.\n\
-          \nUse only the supplied values. Do not research companies, infer facts, or use outside knowledge.\n\
-          Ignore capitalization, underscores, hyphens, extra spaces, and the words \\\"round\\\" or \\\
-          \"financing\\\" when they do not change a funding type.\n\nRules:\n1. Series A through Series\
-          \ H are strict: the vendor must state the same letter. A same-letter suffix does not change\
-          \ the Series: Series B matches B, B1, B2, B3, B+, B Plus, Series B, Series B+, and series_b_plus.\
-          \ A date or amount never rescues a wrong or missing Series letter. Seed, Pre-Seed, Venture,\
-          \ Private Equity, Debt, and unspecified funding rounds do not match a Series letter.\n2. The\
-          \ following non-Series labels are equivalent, in either direction:\n   - Seed, Seed Bridge,\
-          \ and Pre-Series A.\n   - Private Equity, PE, PE Growth, Growth Investment, Growth Equity,\n\
-          \     Strategic Funding, Strategic Round, Strategic Investment, Corporate\n     Investment,\
-          \ and Corporate Round.\n   - Equity Crowdfunding, Grant, and Non-Equity Assistance.\n3. Seed\
-          \ and Pre-Seed are distinct: neither matches the other. The Seed / Pre-Series A equivalence\
-          \ in rule 2 is the only exception involving Pre-Series A.\n4. If ground truth is Early Stage,\
-          \ Seed and Pre-Seed vendor stages are correct.\n5. If ground truth is Undisclosed, an Undisclosed\
-          \ or null/blank vendor stage is correct.\n6. If ground truth stage is null or blank, every vendor\
-          \ answer is correct.\n7. For every other non-Series ground-truth stage: accept a clearly equivalent\n\
-          \   stage. If stages are not equivalent, the answer is wrong: a matching date or\n   amount\
-          \ never rescues a different stage.\n8. Generic or vague labels (funding, funding round, venture,\
-          \ other, unknown,\n   private financing, early-stage, structured financing) are not stage matches\n\
-          \   unless explicitly allowed above.\n\nReturn exactly one result for every input record. Copy\
-          \ its record_id exactly. Reasons must be concise and name the rule used.\n\nGrading\
-          \ principle, which decides every case the rules above leave open: an answer is correct when\
-          \ a buyer of this data would act the same as with the reference stage, and wrong when they would\
-          \ act differently.\n- Same meaning is correct: Regulation Crowdfunding, Reg CF or a retail investment\
-          \ round for Equity Crowdfunding; Growth, Growth funding or Growth equity for Private Equity;\
-          \ a minority stake for Private Equity; Post-IPO Equity for Post-IPO; a PIPE or private placement\
-          \ for a Post-IPO reference (the company is public); Series A for a Pre-Series B reference.\n\
-          - Wrong: an answer that names no stage (capital commitment, primary equity financing, hybrid,\
-          \ equity raise); an answer naming two different stages (Seed and Series A, Pre-Seed and Debt);\
-          \ an instrument instead of a stage (SAFE); Bridge (names no stage); a secondary transaction (not a new round);\
-          \ a Post-IPO answer for a private placement reference."
-        import_stored: false
     amount:
       comparator: amount
       percent: 5
-      currency: compare_flag_nonusd
+      currency: key_currency
     announced_on:
       comparator: date
       days: 7
@@ -112,8 +89,6 @@ board:
   average: rows
   fields:
   - latest_stage
-  - amount
-  - announced_on
   interval: wilson95
   groups:
     enrichment: {}

@@ -1,18 +1,15 @@
-"""obkit's grade hook: the repo's own field grader. Each graded field is one verdict: True, False, or None when the grader
-says the ground truth cannot be scored for it."""
+"""obkit's grade hook: the board ranks on the latest funding stage, as the live board does. The verdict is True, False, or
+None when the grader says the ground truth names no stage. Amount and date are graded by `harness.run` reports, not
+on the board."""
 from __future__ import annotations
 
 import json
 from typing import Any
 
-from harness.models import FIELDS
-
-from .grader import grade_row
+from .grader import grade_stage
 
 VERDICT = {"correct": True, "wrong": False, "not_scoreable": None}
-NAMES = {"stage": "latest_stage", "amount": "amount", "date": "announced_on"}
 
 
 def grade(question: dict[str, Any], answer: str) -> dict[str, bool | None]:
-    verdicts = grade_row({f: question[f] for f in FIELDS}, json.loads(answer))
-    return {name: VERDICT[verdicts[field]] for name, field in NAMES.items()}
+    return {"stage": VERDICT[grade_stage(question["latest_stage"], json.loads(answer).get("latest_stage"))]}

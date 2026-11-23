@@ -17,5 +17,5 @@ This folder holds a 4-company public sample (`sample.jsonl`) for offline verific
 | `domain` | string | Canonical company domain (for example, `stripe.com`). |
 | `company` | string | Company name. |
 | `latest_stage` | string | Latest funding round stage (for example, `Series C`). |
-| `amount` | integer | Funding round amount in USD. |
+| `amount` | integer | Funding round amount, in USD unless `currency` names another. |
 | `announced_on` | string | Announcement date (`YYYY-MM-DD`). |

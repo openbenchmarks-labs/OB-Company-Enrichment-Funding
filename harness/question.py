@@ -43,36 +43,41 @@ def instruction(company: Company) -> str:
     )
 
 
-# Ground truth is in US dollars, so only a dollar sign or USD is read; any other currency stays None.
-_AMOUNT = re.compile(r"^\s*(?:USD\s*|\$)?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMB])?\s*(?:USD)?\s*$", re.IGNORECASE)
+# A number with an optional currency sign or uppercase ISO code and a K/M/B suffix: "9M", "$4.35M", "€10M", "9000000 USD".
+_AMOUNT = re.compile(r"^\s*([$€£]|[A-Z]{3})?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMBkmb])?\s*([A-Z]{3})?\s*$")
 _THOUSANDS = re.compile(r"(?<=\d),(?=\d{3}\b)")
 _SCALE = {"K": 1e3, "M": 1e6, "B": 1e9}
+CURRENCY_SIGNS = {"$": "USD", "€": "EUR", "£": "GBP"}
 
 
-def _number(value: Any) -> int | float | None:
-    """A positive US-dollar amount as a number. Strings such as "5000000", "9M", "$4.35M" or "9000000 USD" are converted;
-    anything else, including another currency, becomes None."""
+def _amount(value: Any) -> tuple[int | float | None, str | None]:
+    """A positive amount and the currency its text names. Strings such as "5000000", "9M", "€10M" or "9000000 USD" are
+    converted; anything else, such as "5 mln", is (None, None)."""
     if value is None or isinstance(value, bool):
-        return None
+        return None, None
     match = _AMOUNT.match(_THOUSANDS.sub("", str(value)))
-    if not match:
-        return None
-    number = float(match.group(1)) * _SCALE.get((match.group(2) or "").upper(), 1)
+    if not match or (match.group(1) and match.group(4)):
+        return None, None
+    number = float(match.group(2)) * _SCALE.get((match.group(3) or "").upper(), 1)
     if number != number or number <= 0:
-        return None
-    return int(number) if number.is_integer() else number
+        return None, None
+    code = match.group(1) or match.group(4)
+    return (int(number) if number.is_integer() else number), CURRENCY_SIGNS.get(code, code)
 
 
 def funding_fields(normalized: dict[str, Any]) -> dict[str, Any]:
     """Map a tool's parsed answer onto the graded fields; every other parsed value is kept beside them."""
     date_value = normalized.get("latest_announced_on") or normalized.get("latest_date")
+    amount, currency = _amount(normalized.get("latest_amount"))
     fields = {
         "latest_stage": normalized.get("latest_stage") or None,
-        "amount": _number(normalized.get("latest_amount")),
+        "amount": amount,
         "announced_on": str(date_value)[:10] if date_value else None,
     }
     skip = {"latest_stage", "latest_amount", "latest_announced_on", "latest_date"}
     fields.update({k: v for k, v in normalized.items() if k not in skip})
+    if currency:
+        fields["currency"] = currency
     return fields
 
 
