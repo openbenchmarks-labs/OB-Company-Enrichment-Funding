@@ -11,10 +11,10 @@ setups:
       effort: high
       output_schema: funding
     pricing:
-      usd: null
+      usd: 0.5
       unit: agent run
-      source: https://www.nimbleway.com/pricing
-      note: Agent run pricing is not configured on the board.
+      source: https://docs.nimbleway.com/nimble-sdk/web-search-agents/efforts
+      note: Effort high, $0.50 per run.
   nimble-agents-medium:
     class: main
     endpoint: POST https://sdk.nimbleway.com/v2/agents/runs
