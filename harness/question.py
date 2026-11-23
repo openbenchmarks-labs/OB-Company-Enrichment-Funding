@@ -43,14 +43,21 @@ def instruction(company: Company) -> str:
     )
 
 
+# Ground truth is in US dollars, so only a dollar sign or USD is read; any other currency stays None.
+_AMOUNT = re.compile(r"^\s*(?:USD\s*|\$)?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMB])?\s*(?:USD)?\s*$", re.IGNORECASE)
+_THOUSANDS = re.compile(r"(?<=\d),(?=\d{3}\b)")
+_SCALE = {"K": 1e3, "M": 1e6, "B": 1e9}
+
+
 def _number(value: Any) -> int | float | None:
-    """A positive amount as a number. Strings such as "5000000" are converted; anything else becomes None."""
+    """A positive US-dollar amount as a number. Strings such as "5000000", "9M", "$4.35M" or "9000000 USD" are converted;
+    anything else, including another currency, becomes None."""
     if value is None or isinstance(value, bool):
         return None
-    try:
-        number = float(str(value).replace(",", ""))
-    except ValueError:
+    match = _AMOUNT.match(_THOUSANDS.sub("", str(value)))
+    if not match:
         return None
+    number = float(match.group(1)) * _SCALE.get((match.group(2) or "").upper(), 1)
     if number != number or number <= 0:
         return None
     return int(number) if number.is_integer() else number
