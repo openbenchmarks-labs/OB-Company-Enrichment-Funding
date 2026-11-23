@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 from typing import Any
 from unittest import mock
@@ -21,7 +22,8 @@ def answer(question: dict[str, Any], setup: str, *, dry: bool, tracer: Any = Non
     """One setup's answer for one question row. `dry` returns a canned reply and sends nothing.
 
     The `answer` string is always the three graded fields as JSON, null where the setup gave no value.
-    A vendor's 429 or 5xx, and a failure of ours, raise so obkit records an infra_error with the full hold.
+    A vendor's 5xx, a refusal of our key or credits (401, 402, 403, 429), and a failure of ours raise, so obkit records an
+    infra_error with the full hold and asks again; none of them is scored against the vendor.
     `tracer` is accepted for obkit's signature and not used.
     """
     company = Company(question["domain"], question.get("company") or None)
@@ -94,18 +96,17 @@ def _row(status: str, fields: dict[str, Any] | None = None, *, error: str | None
 
 
 def _failed(code: int | None, message: str) -> dict[str, Any]:
-    """429 and 5xx are our rate limits or the vendor's outage: raise, so the row is infra_error. Other errors are the vendor's."""
-    if code == 429 or (code is not None and code >= 500):
+    """5xx is the vendor's outage, and 401, 402, 403 and 429 refuse our key, credits or rate: raise, so the row is
+    infra_error. Other errors are the vendor's."""
+    if code in (401, 402, 403, 429) or (code is not None and code >= 500):
         raise RuntimeError(message)
     return _row("vendor_error", error=message[:300])
 
 
 def _status_code(error: str | None) -> int | None:
-    """The status in a "HTTP 429: ..." error, as http_failure writes it."""
-    if not error or not error.startswith("HTTP "):
-        return None
-    digits = error[5:8]
-    return int(digits) if digits.isdigit() else None
+    """The status in an error such as "HTTP 429: ..." (http_failure) or "HTTPError: HTTP 402 from ..."."""
+    match = re.search(r"\bHTTP (\d{3})\b", error or "")
+    return int(match.group(1)) if match else None
 
 
 def _canned(question: dict[str, Any], setup: str) -> dict[str, Any]:
