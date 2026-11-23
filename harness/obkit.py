@@ -15,8 +15,6 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from judge.grader import grade_stage
-
 from . import http_client, registry
 from .adapters._extraction import user_content
 from .adapters._research import HttpError
@@ -62,12 +60,7 @@ def answer(question: dict[str, Any], setup: str, *, dry: bool, tracer: Any = Non
 
 
 def contract(questions: list[dict[str, Any]]) -> dict[str, Any]:
-    """What a setup sees first, per question. No network. The search-then-extract user message is shown with no results.
-    Refuses a set holding a question whose ground truth names no stage: the board grades only the stage, so such a
-    question would be a judge error on every setup."""
-    unscored = [q["domain"] for q in questions if grade_stage(q.get("latest_stage"), "Series A") == "not_scoreable"]
-    if unscored:
-        raise ValueError(f"ground truth names no stage for {len(unscored)} questions, e.g. {unscored[:3]}; drop them")
+    """What a setup sees first, per question. No network. The search-then-extract user message is shown with no results."""
     companies = [Company(q["domain"], q.get("company") or None) for q in questions]
     return {
         "output_schema": OUTPUT_SCHEMA,
