@@ -2,9 +2,9 @@
 
 Owner: Aktan
 
-State: obkit 0.3.0 adoption is in PR review. The public set is `data/sample.jsonl` (4 companies). Each company is scored per field (stage, amount, date); the board unit is fields. Paid runs are off: `budget_usd` is 0 and `answer_usd` is not set.
+State: obkit 0.4.0 adoption is in PR review. The public set is `data/sample.jsonl` (4 companies). Each company is scored per field (stage, amount, date); the board unit is fields. Paid runs are off: `budget_usd` is 0 and `answer_usd` is not set.
 
-Next step: a person writes `versions/key-audit.json` for the public set, then `obkit lock` runs and the first dry-run board can be checked.
+Next step: name the validation and private sets with `obkit add-set`, once the held-out set for v2 is chosen.
 
 Open decisions:
 - Raise `budget_usd` above 0 and source `answer_usd` (Fenil).

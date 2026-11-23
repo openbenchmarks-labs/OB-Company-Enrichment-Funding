@@ -1,7 +1,7 @@
 name: OB-Company-Funding
 serves: Buyers choosing a company-funding data tool or search API who need each company's latest funding round.
 win: The latest round's stage, amount, and announced date match ground truth for more companies than the other setups.
-obkit: 0.3.0
+obkit: 0.4.0
 sets:
   public:
     path: data/sample.jsonl
