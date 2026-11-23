@@ -20,6 +20,14 @@ uv venv && uv pip install -r requirements.txt
 .venv/bin/python -B -m harness.run selftest --tasks data/sample.jsonl
 ```
 
+## obkit
+
+The same adapters and grader also run through obkit 0.4.0 (`harness/obkit.py`, `judge/obkit.py`). Install it into the same venv with `uv pip install "obkit @ git+https://github.com/openbenchmarks-labs/obkit@v0.4.0"`.
+
+- `.venv/bin/obkit check`: validate the benchmark layout, hooks and selftest. Prints `check: ok` when clean.
+- `.venv/bin/obkit go --set public --tools <setup> --dry`: run one setup with canned replies, no network, no spend, then judge it and print the board.
+- `.venv/bin/obkit add-set validation|private FILE`: store a held-out set by its sha256 and name it in `benchmark.yaml`.
+
 ## Guidelines
 
 - **Keep folders strictly separated:** Dataset info in `data/`; execution in `harness/`; per-tool configs in `tools/<tool>.yaml`; grading in `judge/`.
