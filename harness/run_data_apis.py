@@ -156,7 +156,17 @@ def normalize(provider: str, raw: dict[str, Any]) -> dict[str, Any]:
         return {"latest_stage": record.get("financing_type_normalized") or record.get("financing_type"), "latest_date": record.get("effective_date"), "latest_date_observed_at": record.get("found_at"), "latest_amount": record.get("amount_normalized") or record.get("amount"), "total_raised": None, "round_count": len(records)}
     if provider == "apollo":
         item = response.get("organization") or {}
-        return {"latest_stage": item.get("latest_funding_stage"), "latest_date": item.get("latest_funding_round_date"), "latest_amount": None, "total_raised": item.get("total_funding"), "round_count": len(item.get("funding_events") or [])}
+        events = [event for event in item.get("funding_events") or [] if isinstance(event, dict)]
+        result = latest_round(events, date_key="date", stage_key="type", amount_key="amount")
+        newest = max(events, key=lambda event: str(event.get("date") or ""), default={})
+        org_date = item.get("latest_funding_round_date")
+        same_round = not org_date or str(newest.get("date") or "")[:10] == str(org_date)[:10]
+        if not same_round or newest.get("currency") not in ("$", "USD"):
+            result["latest_amount"] = None
+        result["latest_stage"] = item.get("latest_funding_stage") or result["latest_stage"]
+        result["latest_date"] = org_date or result["latest_date"]
+        result["total_raised"] = item.get("total_funding")
+        return result
     if provider == "people-data-labs":
         return {"latest_stage": response.get("latest_funding_stage"), "latest_date": response.get("last_funding_date"), "latest_amount": None, "total_raised": response.get("total_funding_raised"), "round_count": response.get("number_funding_rounds")}
     if provider == "ocean":

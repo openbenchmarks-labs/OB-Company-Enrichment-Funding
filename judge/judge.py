@@ -1,4 +1,4 @@
-"""Judge each provider's latest funding stage against the answer key with GPT-5.6 Terra.
+"""Judge each provider's latest funding stage against the answer key with GPT-5.6.
 
 Reads the company CSV (answer key) and the saved run cells under runs/raw, sends
 one Responses API call per 50 records, and writes every judgment to runs/judgments.
@@ -9,6 +9,7 @@ import argparse
 import csv
 import json
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,10 @@ DEFAULT_INPUT = ROOT / "data" / "sample.csv"
 DEFAULT_RAW_DIR = ROOT / "runs" / "raw"
 DEFAULT_OUTPUT_DIR = ROOT / "runs" / "judgments"
 BATCH_SIZE = 50
+# The answer key is in US dollars, so only a dollar sign or USD is read; any other currency stays None.
+_AMOUNT = re.compile(r"^\s*(?:USD\s*|\$)?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMB])?\s*(?:USD)?\s*$", re.IGNORECASE)
+_THOUSANDS = re.compile(r"(?<=\d),(?=\d{3}\b)")
+_SCALE = {"K": 1e3, "M": 1e6, "B": 1e9}
 
 PROMPT = """You are a strict evaluator for a company-funding benchmark. Evaluate each record independently.
 
@@ -85,6 +90,20 @@ def chunks(values: list[Any], size: int) -> list[list[Any]]:
     return [values[index:index + size] for index in range(0, len(values), size)]
 
 
+def usd_amount(value: Any) -> int | float | None:
+    """A positive US-dollar amount as a number. Strings such as "5000000", "9M", "$4.35M" or "9000000 USD" are converted;
+    anything else, including another currency, becomes None."""
+    if value is None or isinstance(value, bool):
+        return None
+    match = _AMOUNT.match(_THOUSANDS.sub("", str(value)))
+    if not match:
+        return None
+    number = float(match.group(1)) * _SCALE.get((match.group(2) or "").upper(), 1)
+    if number != number or number <= 0:
+        return None
+    return int(number) if number.is_integer() else number
+
+
 def record(case: dict[str, str], run: dict[str, Any]) -> dict[str, Any]:
     vendor = run.get("normalized") or {}
     return {
@@ -96,13 +115,13 @@ def record(case: dict[str, str], run: dict[str, Any]) -> dict[str, Any]:
             "latest_amount": case["answer_amount"] or None,
             "latest_announced_on": case["answer_announced_on"] or None,
         },
-        "vendor": {"run_status": run.get("status"), "latest_stage": vendor.get("latest_stage"), "latest_amount": vendor.get("latest_amount"), "latest_announced_on": vendor.get("latest_announced_on") or vendor.get("latest_date")},
+        "vendor": {"run_status": run.get("status"), "latest_stage": vendor.get("latest_stage"), "latest_amount": usd_amount(vendor.get("latest_amount")), "latest_announced_on": vendor.get("latest_announced_on") or vendor.get("latest_date")},
     }
 
 
 def judge(provider: str, records: list[dict[str, Any]], output: Path) -> dict[str, Any]:
     response = OpenAI(api_key=os.environ["OPENAI_API_KEY"]).responses.create(
-        model=os.getenv("OPENAI_JUDGE_MODEL", "gpt-5.6-terra"),
+        model=os.getenv("OPENAI_JUDGE_MODEL", "gpt-5.6"),
         reasoning={"effort": os.getenv("OPENAI_JUDGE_REASONING_EFFORT", "medium")},
         text={"verbosity": "low", "format": {"type": "json_schema", "name": "funding_stage_judgments", "strict": True, "schema": RESULT_SCHEMA}},
         max_output_tokens=12_000,
