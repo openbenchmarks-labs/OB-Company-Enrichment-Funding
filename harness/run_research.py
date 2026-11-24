@@ -29,6 +29,7 @@ from urllib.request import Request, urlopen
 from harness import nimble_agents, nimble_search
 from harness.cases import parse_cases
 from harness.data_apis import load_environment
+from harness.extruct_deep_research import extruct as extruct_deep_research
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -475,6 +476,7 @@ PROVIDERS = {
     "nimble-lite": partial(nimble_funding, depth="lite"),
     "nimble-standard": partial(nimble_funding, depth="standard"),
     "nimble-agents": nimble_agent_funding,
+    "extruct": extruct_deep_research,
 }
 REQUIRED_ENV = {
     "exa": "EXA_API_KEY", "exa-instant": "EXA_API_KEY", "exa-agent": "EXA_API_KEY",
@@ -484,6 +486,7 @@ REQUIRED_ENV = {
     "seltz-companies": "SELTZ_API_KEY", "seltz-news": "SELTZ_API_KEY",
     "nimble-lite": nimble_search.REQUIRED_ENV, "nimble-standard": nimble_search.REQUIRED_ENV,
     "nimble-agents": nimble_agents.REQUIRED_ENV,
+    "extruct": "EXTRUCT_API_TOKEN",
 }
 DEFAULT_CONCURRENCY = {
     "exa": 12, "exa-instant": 12, "parallel": 8, "parallel-responses-medium": 8,
@@ -493,6 +496,7 @@ DEFAULT_CONCURRENCY = {
     "seltz-companies": 6, "seltz-news": 6,
     "nimble-lite": 4, "nimble-standard": 4,
     "nimble-agents": nimble_agents.DEFAULT_CONCURRENCY,
+    "extruct": 3,
 }
 
 
