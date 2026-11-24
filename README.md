@@ -1,97 +1,59 @@
 # OB-Company-Funding
 
-Open, independent benchmark of company funding data APIs. Every provider receives the same company domain and returns the company's latest funding round: stage, amount and announced date, checked against funding events verified from official sources. Two boards: freshness for rounds announced in the last 30 days, enrichment for older rounds. Providers measured include Crunchbase, Harmonic, Apollo, People Data Labs, ZoomInfo, Crustdata, Explorium, Fundable, PredictLeads, Ocean.io, Exa, Parallel, Firecrawl and Seltz.
+Open, independent benchmark of company funding data APIs. Each provider gets a company and returns the company's latest funding round. The board scores the latest funding stage against a reviewed answer key.
 
 **Live leaderboard:** [openbenchmarks.com/company-funding](https://openbenchmarks.com/company-funding) · **Public dataset:** [`openbenchmarks/OB-Company-Funding`](https://huggingface.co/datasets/openbenchmarks/OB-Company-Funding)
 
 Published and maintained by **[OpenBenchmarks Labs](https://openbenchmarks.com)**.
 
-## Methodology
+## How it works
 
-The benchmark evaluates providers across two separate boards based on round age:
+1. **Run.** Each provider is called once per company. Data APIs get the company domain. Research APIs get the same instruction and the same output schema (`harness/run_research.py`, `instruction()` and `OUTPUT_SCHEMA`). Every response is saved as one JSON file per company under `runs/raw/<provider>/`.
+2. **Judge.** GPT-5.6 Terra at medium reasoning effort compares each provider's latest stage with the answer key, 50 records per call (`judge/judge.py`). The rules are in the prompt: Series letters are strict, a fixed list of seed, private equity and crowdfunding labels are equivalent, Seed and Pre-Seed differ, a blank answer-key stage passes every answer, and for other stages an exactly equal date or amount also counts.
+3. **Board.** Stage correct over every company in the cohort (`judge/board.py`).
 
-- **Enrichment**: Rounds announced more than 30 days ago (durable historical accuracy).
-- **Freshness**: Rounds announced in the trailing 30 days (recent announcement coverage).
+Amount and date are not scored on their own. The judge reads them only for rule 7.
 
-Every provider response is graded on three core fields (`judge/config.yaml`):
+## Providers
 
-- `latest_stage`: Funding stage, normalized with stage equivalence rules (`judge/stage_aliases.json`).
-- `amount`: Round size in USD (exact match within ±5% tolerance).
-- `announced_on`: Announced date in `YYYY-MM-DD` (exact match within ±7 days tolerance).
-
-The live board ranks providers on latest funding stage. Providers are scored against the company observations they were actually measured on, with 95% confidence intervals computed in `judge/grader.py`.
-
-## Tools evaluated
-
-15 tools configured in [`tools/`](tools/README.md):
-
-`apollo`, `company-enrich`, `crustdata`, `exa`, `explorium`, `fiber`, `firecrawl`, `fundable`, `nimble`, `ocean`, `parallel`, `people-data-labs`, `predictleads`, `seltz`, `zoominfo`
+| Kind | Providers | Code |
+|---|---|---|
+| Data APIs | `fiber`, `predictleads`, `apollo`, `people-data-labs`, `ocean`, `explorium`, `company-enrich`, `fundable` | `harness/data_apis.py`, `harness/run_data_apis.py` |
+| Research APIs | `exa`, `exa-instant`, `exa-agent`, `parallel`, `parallel-responses-medium`, `firecrawl`, `firecrawl-spark-2`, `seltz-companies`, `seltz-news`, `nimble-lite`, `nimble-standard`, `nimble-agents` | `harness/run_research.py`, `harness/nimble*.py` |
+| Batch APIs | `crustdata`, `zoominfo` | `harness/run_crustdata.py`, `harness/run_zoominfo.py` |
 
 ## Dataset
 
-- **Public split:** 10 companies published on Hugging Face at [`openbenchmarks/OB-Company-Funding`](https://huggingface.co/datasets/openbenchmarks/OB-Company-Funding).
-- **Public sample:** 4 example companies are committed in [`data/sample.jsonl`](data/sample.jsonl) for offline verification (`selftest`) and schema reference.
-- **Held-out split:** The evaluation cohorts used for the published Enrichment and Freshness boards stay private so providers cannot train on them.
+- `data/sample.csv`: the 10 public companies from Hugging Face, in the input format the runners read.
+- The companies behind the published board stay private, so providers cannot train on them.
 
-See [`data/README.md`](data/README.md) for the file schema.
+See [`data/README.md`](data/README.md) for the columns.
 
-## Repository structure
-
-- [`data/`](data/README.md): Input schema documentation and 4-row public sample (`sample.jsonl`) for offline checks.
-- [`harness/`](harness/README.md): CLI runner (`run`, `grade`, `selftest`, `list-tools`) and one adapter per tool.
-- [`tools/`](tools/README.md): One `<tool>.yaml` config per funding-data provider (15 tools).
-- [`judge/`](judge/README.md): Deterministic field grader, stage alias table (`stage_aliases.json`), and confidence intervals.
-- [`benchmark.yaml`](benchmark.yaml): Benchmark contract, scope, and refresh cadence.
-- [`AGENTS.md`](AGENTS.md): Entry guide for coding agents.
-
-## Quick start
-
-Run the offline check (no API keys required):
+## Run it
 
 ```sh
 uv venv && uv pip install -r requirements.txt
-.venv/bin/python -B -m harness.run selftest --tasks data/sample.jsonl
+cp .env.example .env   # add the keys for the providers you run
+.venv/bin/python -m unittest discover -s harness/tests -t .
 ```
 
-Ask tools about your companies. Without `--execute` this prints the plan and calls nothing; with it, the tools are called and billed:
+Calls below are billed by each provider. `--dry-run` shows the plan and calls nothing.
 
 ```sh
-cp .env.example .env   # then add the keys for the tools you run
-.venv/bin/python -B -m harness.run run --tasks data/sample.jsonl --setups exa,apollo
-.venv/bin/python -B -m harness.run run --tasks data/sample.jsonl --setups exa,apollo --out runs/sample --execute
+.venv/bin/python -m harness.run_research exa --dry-run
+.venv/bin/python -m harness.run_research exa
+.venv/bin/python -m harness.run_data_apis --only apollo,fundable
+.venv/bin/python -m harness.run_crustdata
+.venv/bin/python -m harness.run_zoominfo --run      # needs the ZoomInfo gtm CLI
+.venv/bin/python -m judge.judge                     # needs OPENAI_API_KEY
+.venv/bin/python -m judge.board
 ```
-
-Grade one setup's answers against ground truth:
-
-```sh
-.venv/bin/python -B -m harness.run grade --tasks data/sample.jsonl --predictions runs/sample/exa.jsonl
-```
-
-List configured tools:
-
-```sh
-.venv/bin/python -B -m harness.run list-tools
-```
-
-## Adding or updating a tool
-
-1. Add or edit `tools/<tool>.yaml` (and `.env.example` if adding a new API key).
-2. For a new tool, add `harness/adapters/<tool>.py`.
-3. Run the offline `selftest` command above.
-4. Open a pull request.
-
-## Links
-
-- [Live leaderboard](https://openbenchmarks.com/company-funding) and [methodology](https://openbenchmarks.com/company-funding#methodology)
-- [JSON API](https://openbenchmarks.com/api/benchmarks/company-funding)
-- [Hugging Face dataset](https://huggingface.co/datasets/openbenchmarks/OB-Company-Funding)
-- [`llms.txt`](https://openbenchmarks.com/llms.txt)
 
 ## Related benchmarks
 
-- [OB-Company-Enrichment](https://github.com/openbenchmarks-labs/OB-Company-Enrichment): Core firmographic enrichment ([leaderboard](https://openbenchmarks.com/company-enrichment))
-- [OB-Company-News](https://github.com/openbenchmarks-labs/OB-Company-News): Company news search and news-index APIs ([leaderboard](https://openbenchmarks.com/company-news))
-- [OB-Company-Search-Lookalikes](https://github.com/openbenchmarks-labs/OB-Company-Search-Lookalikes): Company lookalike discovery ([leaderboard](https://openbenchmarks.com/lookalikes))
+- [OB-Company-Enrichment](https://github.com/openbenchmarks-labs/OB-Company-Enrichment): firmographic enrichment
+- [OB-Company-News](https://github.com/openbenchmarks-labs/OB-Company-News): company news search
+- [OB-Company-Search-Lookalikes](https://github.com/openbenchmarks-labs/OB-Company-Search-Lookalikes): company lookalike discovery
 - [All OpenBenchmarks leaderboards](https://openbenchmarks.com)
 
 ## License

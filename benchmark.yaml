@@ -1,7 +1,0 @@
-name: OB-Company-Funding
-order:
-  serves: Buyers choosing a company-funding data tool or search API who need each company's latest funding round.
-  win: The latest round's stage, amount, and announced date match ground truth for more companies than the other setups.
-  budget_usd: 0
-  refresh_days: 30
-  not_measured_max: 0.1
