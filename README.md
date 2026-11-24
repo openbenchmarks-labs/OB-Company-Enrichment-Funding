@@ -34,7 +34,6 @@ See [`data/README.md`](data/README.md) for the columns.
 ```sh
 uv venv && uv pip install -r requirements.txt
 cp .env.example .env   # add the keys for the providers you run
-.venv/bin/python -m unittest discover -s harness/tests -t .
 ```
 
 Calls below are billed by each provider. `--dry-run` shows the plan and calls nothing.

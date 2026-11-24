@@ -10,7 +10,7 @@
 
 ```sh
 uv venv && uv pip install -r requirements.txt
-.venv/bin/python -m unittest discover -s harness/tests -t .
+.venv/bin/python -m harness.run_research exa --dry-run
 ```
 
 ## Rules

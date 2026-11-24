@@ -8,9 +8,7 @@ auditability and later benchmark scoring.
 Parallel is measured through two endpoints, as two separate benchmark providers:
 ``parallel`` (Task API) and ``parallel-responses-medium`` (Responses API at
 medium reasoning effort). They share this module's OUTPUT_SCHEMA and
-instruction() verbatim, so the endpoint is the only variable between them. Keep
-it that way -- see harness/tests/test_parallel_responses_contract.py, which
-asserts the parity.
+instruction() verbatim, so the endpoint is the only variable between them.
 """
 
 from __future__ import annotations
@@ -71,11 +69,11 @@ FIRECRAWL_POLL_ATTEMPTS = 120
 
 # Seltz runs as two providers that differ only in search scope, the same way
 # Parallel runs as two endpoints. Keep query, response_format and system_prompt
-# identical between them; see test_seltz_scope_contract.py.
+# identical between them.
 SELTZ_SCOPES = ("companies", "news")
 
 # Exa is measured on two search types with the same query and schema, so the
-# search type is the only variable; see test_exa_search_type_contract.py.
+# search type is the only variable.
 EXA_DEFAULT_SEARCH_TYPE = "deep-reasoning"
 EXA_SEARCH_TYPES = ("deep-reasoning", "instant")
 
