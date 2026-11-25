@@ -12,7 +12,7 @@ Published and maintained by **[OpenBenchmarks Labs](https://openbenchmarks.com)*
 2. **Judge.** GPT-5.6 at medium reasoning effort compares each provider's latest stage with the answer key, 50 records per call (`judge/judge.py`). The rules are in the prompt: Series letters are strict, a fixed list of seed, private equity and crowdfunding labels are equivalent, Seed and Pre-Seed differ, a blank answer-key stage passes every answer, and for other stages an exactly equal date or amount also counts.
 3. **Board.** Stage correct over every company in the cohort (`judge/board.py`).
 
-Amount and date are not scored on their own. The judge reads them only for rule 7. Before the judge sees a provider's amount, `usd_amount()` reads it as US dollars ("9M", "$4.35M", "9000000 USD"); an amount in another currency is passed as empty.
+Amount and date are not scored on their own. The judge reads them only for rule 7. Before the judge sees a provider's amount, `usd_amount()` reads it as US dollars ("9M", "$4.35M", "9000000 USD"); an amount written with another currency, such as "5M EUR", is passed as empty. The judge does not see the `currency` field of the answer or of the key, so a bare number in another currency is compared as it is.
 
 ## Providers
 
