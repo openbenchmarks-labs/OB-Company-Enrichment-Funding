@@ -8,7 +8,6 @@ Existing successful rows are skipped, making interrupted runs safe to resume.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import subprocess
 import tempfile
@@ -17,6 +16,8 @@ from decimal import Decimal, InvalidOperation
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from harness.cases import read_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -149,7 +150,7 @@ def main() -> int:
     # paid API call has already been made, turning a good response into a
     # recorded error. Same failure this repo hit in the publish script.
     RAW, BATCH_RAW = args.raw_dir.resolve(), args.batch_dir.resolve()
-    cases = list(csv.DictReader(args.input.open(newline="", encoding="utf-8")))
+    cases = read_cases(args.input)
     if not cases:
         raise RuntimeError(f"{args.input} has no rows")
     if args.expect_cases is not None and (len(cases) != args.expect_cases or len({case["company_domain"] for case in cases}) != args.expect_cases):

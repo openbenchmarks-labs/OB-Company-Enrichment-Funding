@@ -10,7 +10,6 @@ all existing cells by default. Reattempting a failed cell requires an explicit
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import os
 import re
@@ -22,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from harness.cases import read_cases
 from harness.data_apis import PROVIDERS, funding_paths, load_environment
 
 
@@ -63,7 +63,7 @@ def cell_path(provider: str, domain: str) -> Path:
 
 def load_cases(path: Path, expect: int | None) -> list[dict[str, str]]:
     """Cohort size is no longer fixed: freshness snapshots are their own size."""
-    cases = list(csv.DictReader(path.open(newline="")))
+    cases = read_cases(path)
     domains = [row["company_domain"].lower().strip() for row in cases]
     if not cases:
         raise RuntimeError(f"{path} has no rows")

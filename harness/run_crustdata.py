@@ -4,13 +4,14 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
+
+from harness.cases import read_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,7 +72,7 @@ def main() -> int:
     raw, batch_raw = args.raw_dir, args.batch_dir
     if not os.environ.get("CRUSTDATA_API_KEY"):
         raise RuntimeError("CRUSTDATA_API_KEY is required")
-    cases = list(csv.DictReader(args.input.open(newline="", encoding="utf-8")))
+    cases = read_cases(args.input)
     if not cases:
         raise RuntimeError(f"{args.input} has no rows")
     pending = [case for case in cases if not is_final(raw / f"{case['company_domain']}.json")]
