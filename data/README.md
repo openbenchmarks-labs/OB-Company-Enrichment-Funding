@@ -1,6 +1,6 @@
 # data
 
-`sample.csv` holds the 10 public companies from [`openbenchmarks/OB-Company-Funding`](https://huggingface.co/datasets/openbenchmarks/OB-Company-Funding), one row per company. The runners and the judge read this format, or a Hugging Face dataset file (JSONL) as published; pass another file with `--input`. A Hugging Face row is read as the columns below: `case_id` as `candidate_id`, `input_name` as `company_name`, `input_domain` as `company_domain`, and `latest_stage`, `latest_announced_on`, `latest_amount` and `currency` as the four `answer_` columns.
+`sample.csv` holds the 10 public companies from [`openbenchmarks/OB-Company-Enrichment-Funding`](https://huggingface.co/datasets/openbenchmarks/OB-Company-Enrichment-Funding), one row per company. The runners and the judge read this format, or a Hugging Face dataset file (JSONL) as published; pass another file with `--input`. A Hugging Face row is read as the columns below: `case_id` as `candidate_id`, `input_name` as `company_name`, `input_domain` as `company_domain`, and `latest_stage`, `latest_announced_on`, `latest_amount` and `currency` as the four `answer_` columns.
 
 | Column | Read by | Meaning |
 |---|---|---|
