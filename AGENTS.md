@@ -1,4 +1,4 @@
-# AGENTS.md: OB-Company-Funding
+# AGENTS.md: OB-Company-Enrichment (Funding)
 
 | Folder | Owns |
 |---|---|

@@ -1,8 +1,8 @@
-# OB-Company-Funding
+# OB-Company-Enrichment (Funding)
 
 Open, independent benchmark of company funding data APIs. Each provider gets a company and returns the company's latest funding round. The board scores the latest funding stage against a reviewed answer key.
 
-**Live leaderboard:** [openbenchmarks.com/company-funding](https://openbenchmarks.com/company-funding) · **Public dataset:** [`openbenchmarks/OB-Company-Funding`](https://huggingface.co/datasets/openbenchmarks/OB-Company-Funding)
+**Live leaderboard:** [openbenchmarks.com/company-funding](https://openbenchmarks.com/company-funding) · **Public dataset:** [`openbenchmarks/OB-Company-Enrichment-Funding`](https://huggingface.co/datasets/openbenchmarks/OB-Company-Enrichment-Funding)
 
 Published and maintained by **[OpenBenchmarks Labs](https://openbenchmarks.com)**.
 
@@ -50,7 +50,7 @@ Calls below are billed by each provider. `--dry-run` shows the plan and calls no
 
 ## Related benchmarks
 
-- [OB-Company-Enrichment](https://github.com/openbenchmarks-labs/OB-Company-Enrichment): firmographic enrichment
+- [OB-Company-Enrichment-Firmographics](https://github.com/openbenchmarks-labs/OB-Company-Enrichment-Firmographics): firmographic enrichment
 - [OB-Company-News](https://github.com/openbenchmarks-labs/OB-Company-News): company news search
 - [OB-Company-Search-Lookalikes](https://github.com/openbenchmarks-labs/OB-Company-Search-Lookalikes): company lookalike discovery
 - [All OpenBenchmarks leaderboards](https://openbenchmarks.com)
