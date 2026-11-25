@@ -6,7 +6,6 @@ one Responses API call per 50 records, and writes every judgment to runs/judgmen
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import os
 import re
@@ -15,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
+
+from harness.cases import read_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -139,7 +140,7 @@ def judge(provider: str, records: list[dict[str, Any]], output: Path) -> dict[st
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Company CSV with the answer key.")
+    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Company CSV or Hugging Face dataset file (JSONL) with the answer key.")
     parser.add_argument("--raw-dir", type=Path, default=DEFAULT_RAW_DIR, help="One folder of saved cells per provider.")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--only", help="comma-separated providers")
@@ -147,7 +148,7 @@ def main() -> int:
     args = parser.parse_args()
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required")
-    cases = list(csv.DictReader(args.input.open(newline="", encoding="utf-8")))
+    cases = read_cases(args.input)
     providers = sorted(path.name for path in args.raw_dir.iterdir() if path.is_dir() and not path.name.endswith("-batches"))
     if args.only:
         providers = [provider for provider in providers if provider in {value.strip() for value in args.only.split(",")}]

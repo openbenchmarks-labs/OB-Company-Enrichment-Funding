@@ -14,9 +14,7 @@ instruction() verbatim, so the endpoint is the only variable between them.
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
-import io
 import json
 import os
 import time
@@ -29,6 +27,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from harness import nimble_agents, nimble_search
+from harness.cases import parse_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -582,8 +581,8 @@ def main() -> int:
     # snapshots are their own cohorts of their own size, so the input and the
     # raw output directory are arguments, and the case count is checked against
     # what the caller says to expect rather than a hardcoded 300.
-    parser.add_argument("--input", type=Path, default=INPUT, help="Cohort CSV. Defaults to the enrichment cohort.")
-    parser.add_argument("--input-sha256", help="Require this exact frozen CSV checksum before any requests.")
+    parser.add_argument("--input", type=Path, default=INPUT, help="Company CSV, or a Hugging Face dataset file (JSONL).")
+    parser.add_argument("--input-sha256", help="Require this exact frozen input checksum before any requests.")
     parser.add_argument("--raw-dir", type=Path, default=None,
                         help="Directory for saved cells. Defaults to <provider-runs-v2>/raw/<provider>.")
     parser.add_argument("--expect-cases", type=int, default=None,
@@ -601,7 +600,7 @@ def main() -> int:
     input_sha256 = hashlib.sha256(input_bytes).hexdigest()
     if args.input_sha256 and args.input_sha256.lower() != input_sha256:
         raise RuntimeError("Input SHA256 mismatch: refusing to run a different dataset snapshot")
-    cases = list(csv.DictReader(io.StringIO(input_bytes.decode("utf-8-sig"), newline="")))
+    cases = parse_cases(input_bytes.decode("utf-8-sig"))
     if not cases:
         raise RuntimeError(f"{args.input} has no rows")
     if args.expect_cases is not None and len(cases) != args.expect_cases:
