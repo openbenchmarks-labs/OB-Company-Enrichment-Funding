@@ -16,6 +16,7 @@ from typing import Any
 from openai import OpenAI
 
 from harness.cases import read_cases
+from harness.data_apis import load_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -146,6 +147,7 @@ def main() -> int:
     parser.add_argument("--only", help="comma-separated providers")
     parser.add_argument("--max-workers", type=int, default=11)
     args = parser.parse_args()
+    load_environment()
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required")
     cases = read_cases(args.input)

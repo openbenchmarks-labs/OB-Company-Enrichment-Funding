@@ -145,10 +145,7 @@ def main() -> int:
     parser.add_argument("--batch-dir", type=Path, default=BATCH_RAW)
     parser.add_argument("--expect-cases", type=int, default=None)
     args = parser.parse_args()
-    # Resolve to absolute: cells record the batch file path relative to ROOT,
-    # and a relative --batch-dir makes that relative_to() throw *after* the
-    # paid API call has already been made, turning a good response into a
-    # recorded error. Same failure this repo hit in the publish script.
+    # Resolve to absolute so the batch path saved in each cell does not depend on the working directory.
     RAW, BATCH_RAW = args.raw_dir.resolve(), args.batch_dir.resolve()
     cases = read_cases(args.input)
     if not cases:
@@ -184,7 +181,7 @@ def main() -> int:
             response, latency_ms, failure_reason = invoke(group)
             batch_path = BATCH_RAW / f"batch-{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')}.json"
             write(batch_path, {"requested_domains": [case["company_domain"] for case in group], "completed_at": now(), "latency_ms": latency_ms, "response": response, "error": failure_reason})
-            batch_file = str(batch_path.relative_to(ROOT))
+            batch_file = str(batch_path.relative_to(ROOT) if batch_path.is_relative_to(ROOT) else batch_path)
             for item_index, case in enumerate(group, start=1):
                 item = response.get(f"company_{item_index}") if response else {}
                 write(RAW / f"{case['company_domain']}.json", row(case, item if isinstance(item, dict) else {}, latency_ms, failure_reason, batch_file))

@@ -28,6 +28,7 @@ from urllib.request import Request, urlopen
 
 from harness import nimble_agents, nimble_search
 from harness.cases import parse_cases
+from harness.data_apis import load_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -593,6 +594,7 @@ def main() -> int:
     parser.add_argument("--retry-status", default="", help="Explicitly retry saved Nimble statuses, e.g. error,not_found,in_progress.")
     parser.add_argument("--dry-run", action="store_true", help="Show pending cases and configuration without calls or file writes.")
     args = parser.parse_args()
+    load_environment()
     required = REQUIRED_ENV[args.provider]
     required = (required,) if isinstance(required, str) else required
     missing_keys = [key for key in required if not os.environ.get(key)]

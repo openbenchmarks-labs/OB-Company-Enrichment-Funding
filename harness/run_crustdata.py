@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 from harness.cases import read_cases
+from harness.data_apis import load_environment
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,6 +70,7 @@ def main() -> int:
     parser.add_argument("--raw-dir", type=Path, default=RAW)
     parser.add_argument("--batch-dir", type=Path, default=BATCH_RAW)
     args = parser.parse_args()
+    load_environment()
     raw, batch_raw = args.raw_dir, args.batch_dir
     if not os.environ.get("CRUSTDATA_API_KEY"):
         raise RuntimeError("CRUSTDATA_API_KEY is required")
