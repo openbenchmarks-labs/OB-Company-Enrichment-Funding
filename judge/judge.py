@@ -1,4 +1,4 @@
-"""Judge each provider's latest funding stage against the answer key with GPT-5.6.
+"""Judge each provider's latest funding stage against the answer key with gpt-5.6-terra.
 
 Reads the company CSV (answer key) and the saved run cells under runs/raw, sends
 one Responses API call per 50 records, and writes every judgment to runs/judgments.
@@ -13,8 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
-
+from harness import llm
 from harness.cases import read_cases
 from harness.data_apis import load_environment
 
@@ -24,6 +23,9 @@ DEFAULT_INPUT = ROOT / "data" / "sample.csv"
 DEFAULT_RAW_DIR = ROOT / "runs" / "raw"
 DEFAULT_OUTPUT_DIR = ROOT / "runs" / "judgments"
 BATCH_SIZE = 50
+# On Azure OpenAI this is the deployment name. OPENAI_JUDGE_MODEL and OPENAI_JUDGE_REASONING_EFFORT override them.
+JUDGE_MODEL = "gpt-5.6-terra"
+JUDGE_REASONING_EFFORT = "medium"
 # The answer key is in US dollars, so only a dollar sign or USD is read; any other currency stays None.
 _AMOUNT = re.compile(r"^\s*(?:USD\s*|\$)?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMB])?\s*(?:USD)?\s*$", re.IGNORECASE)
 _THOUSANDS = re.compile(r"(?<=\d),(?=\d{3}\b)")
@@ -122,9 +124,9 @@ def record(case: dict[str, str], run: dict[str, Any]) -> dict[str, Any]:
 
 
 def judge(provider: str, records: list[dict[str, Any]], output: Path) -> dict[str, Any]:
-    response = OpenAI(api_key=os.environ["OPENAI_API_KEY"]).responses.create(
-        model=os.getenv("OPENAI_JUDGE_MODEL", "gpt-5.6"),
-        reasoning={"effort": os.getenv("OPENAI_JUDGE_REASONING_EFFORT", "medium")},
+    response = llm.client().responses.create(
+        model=os.getenv("OPENAI_JUDGE_MODEL", JUDGE_MODEL),
+        reasoning={"effort": os.getenv("OPENAI_JUDGE_REASONING_EFFORT", JUDGE_REASONING_EFFORT)},
         text={"verbosity": "low", "format": {"type": "json_schema", "name": "funding_stage_judgments", "strict": True, "schema": RESULT_SCHEMA}},
         max_output_tokens=12_000,
         input=[{"role": "developer", "content": PROMPT}, {"role": "user", "content": json.dumps({"records": records}, separators=(",", ":"))}],
@@ -148,8 +150,8 @@ def main() -> int:
     parser.add_argument("--max-workers", type=int, default=11)
     args = parser.parse_args()
     load_environment()
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required")
+    if llm.missing():
+        raise RuntimeError(f"{llm.missing()[0]} is required")
     cases = read_cases(args.input)
     providers = sorted(path.name for path in args.raw_dir.iterdir() if path.is_dir() and not path.name.endswith("-batches"))
     if args.only:

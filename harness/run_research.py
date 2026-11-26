@@ -26,7 +26,7 @@ from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from harness import nimble_agents, nimble_search
+from harness import llm, nimble_agents, nimble_search
 from harness.cases import parse_cases
 from harness.data_apis import load_environment
 
@@ -345,6 +345,39 @@ def seltz(case: dict[str, str], scope: str = "companies") -> tuple[dict[str, Any
     }
 
 
+def seltz_search(case: dict[str, str], scope: str = "web") -> tuple[dict[str, Any], dict[str, Any]]:
+    """Seltz Search with evidence-only extraction, measured like the Nimble search providers: the same instruction
+    as the query, 10 results, then the Nimble extraction step (same prompt, model and settings) reads the funding
+    event from those results only. Seltz documents carry no title, so the evidence is url, content and published date."""
+    headers = {"x-api-key": os.environ["SELTZ_API_KEY"], "Content-Type": "application/json"}
+    request_body = {"query": instruction(case), "scope": scope, "max_results": nimble_search.MAX_RESULTS}
+    started = time.perf_counter()
+    body = request_json("https://api.seltz.ai/v1/search", headers, request_body)
+    audit: dict[str, Any] = {"request": {"url": "https://api.seltz.ai/v1/search", "body": request_body},
+                             "raw_response": body, "scope": scope,
+                             "search_latency_ms": round((time.perf_counter() - started) * 1000),
+                             "model": nimble_search.EXTRACT_MODEL, "reasoning_effort": nimble_search.REASONING_EFFORT}
+    hits = [{"url": d["url"], "published_date": d.get("published_date"),
+             "snippet": d.get("content") or "\n".join(
+                 (s.get("text") if isinstance(s, dict) else str(s)) for s in d.get("snippets") or [])}
+            for d in (body.get("documents") or []) if isinstance(d, dict) and d.get("url")][: nimble_search.MAX_RESULTS]
+    audit.update(search_evidence=hits, sources=[h["url"] for h in hits])
+    if not hits:
+        audit["status"] = "not_found"
+        return {field: None for field in OUTPUT_SCHEMA["properties"]}, audit
+    started = time.perf_counter()
+    response = llm.client(max_retries=2, timeout=nimble_search.EXTRACT_TIMEOUT).responses.create(
+        **nimble_search.build_extraction_request(case, instruction(case), hits, OUTPUT_SCHEMA))
+    audit["extraction"] = {"response_id": response.id, "status": response.status, "output_text": response.output_text,
+                           "usage": response.usage.model_dump() if response.usage else None,
+                           "latency_ms": round((time.perf_counter() - started) * 1000)}
+    if response.status != "completed":
+        raise ValueError(f"Funding extraction did not complete: {response.status}")
+    value = nimble_search.validate_output(json.loads(response.output_text), OUTPUT_SCHEMA)
+    audit["status"] = "ok" if any(item is not None for item in value.values()) else "not_found"
+    return value, audit
+
+
 def exa_payload(case: dict[str, str], search_type: str) -> dict[str, Any]:
     """Request body for one Exa arm. Search type is the only per-arm difference."""
     return {"query": instruction(case), "type": search_type, "output_schema": OUTPUT_SCHEMA}
@@ -454,6 +487,10 @@ def nimble_agent_funding(case: dict[str, str], checkpoint: Callable[[dict[str, A
 
 
 NIMBLE_PROVIDERS = frozenset({*nimble_search.PROVIDERS, nimble_agents.VENDOR_SLUG})
+# Providers whose answer comes from the extraction model, so they need Azure OpenAI or OpenAI credentials.
+EXTRACTION_PROVIDERS = frozenset({*nimble_search.PROVIDERS, "seltz-search-web"})
+# Providers that record their own ok / not_found status; the rest are "ok" whenever the call succeeds.
+OWN_STATUS_PROVIDERS = NIMBLE_PROVIDERS | {"seltz-search-web"}
 
 
 def nimble_contract(provider: str, case: dict[str, str]) -> dict[str, Any]:
@@ -472,27 +509,28 @@ PROVIDERS = {
     "firecrawl-spark-2": partial(firecrawl, model=FIRECRAWL_SPARK_2_MODEL),
     "seltz-companies": partial(seltz, scope="companies"),
     "seltz-news": partial(seltz, scope="news"),
+    "seltz-search-web": partial(seltz_search, scope="web"),
     "nimble-lite": partial(nimble_funding, depth="lite"),
     "nimble-standard": partial(nimble_funding, depth="standard"),
-    "nimble-agents": nimble_agent_funding,
+    nimble_agents.VENDOR_SLUG: nimble_agent_funding,
 }
 REQUIRED_ENV = {
     "exa": "EXA_API_KEY", "exa-instant": "EXA_API_KEY", "exa-agent": "EXA_API_KEY",
     "parallel": "PARALLEL_API_KEY",
     "parallel-responses-medium": "PARALLEL_API_KEY",
     "firecrawl": "FIRECRAWL_API_KEY", "firecrawl-spark-2": "FIRECRAWL_API_KEY",
-    "seltz-companies": "SELTZ_API_KEY", "seltz-news": "SELTZ_API_KEY",
+    "seltz-companies": "SELTZ_API_KEY", "seltz-news": "SELTZ_API_KEY", "seltz-search-web": "SELTZ_API_KEY",
     "nimble-lite": nimble_search.REQUIRED_ENV, "nimble-standard": nimble_search.REQUIRED_ENV,
-    "nimble-agents": nimble_agents.REQUIRED_ENV,
+    nimble_agents.VENDOR_SLUG: nimble_agents.REQUIRED_ENV,
 }
 DEFAULT_CONCURRENCY = {
     "exa": 12, "exa-instant": 12, "parallel": 8, "parallel-responses-medium": 8,
     # Agentic search runs are long and metered; keep these low until a smoke
     # test shows what each vendor tolerates.
     "exa-agent": 4, "firecrawl": 4, "firecrawl-spark-2": 4,
-    "seltz-companies": 6, "seltz-news": 6,
+    "seltz-companies": 6, "seltz-news": 6, "seltz-search-web": 6,
     "nimble-lite": 4, "nimble-standard": 4,
-    "nimble-agents": nimble_agents.DEFAULT_CONCURRENCY,
+    nimble_agents.VENDOR_SLUG: nimble_agents.DEFAULT_CONCURRENCY,
 }
 
 
@@ -532,7 +570,7 @@ def run_one(provider: str, case: dict[str, str], raw_dir: Path | None = None) ->
             "input": {"company_name": case["company_name"], "domain": case["company_domain"]},
             "source": "live_api",
             "completed_at": now(),
-            "status": raw["status"] if provider in NIMBLE_PROVIDERS else "ok",
+            "status": raw["status"] if provider in OWN_STATUS_PROVIDERS else "ok",
             "latency_ms": round((time.perf_counter() - started) * 1000),
             "normalized": normalized,
             "raw": raw,
@@ -598,6 +636,8 @@ def main() -> int:
     required = REQUIRED_ENV[args.provider]
     required = (required,) if isinstance(required, str) else required
     missing_keys = [key for key in required if not os.environ.get(key)]
+    if args.provider in EXTRACTION_PROVIDERS:
+        missing_keys += llm.missing()
     input_bytes = args.input.read_bytes()
     input_sha256 = hashlib.sha256(input_bytes).hexdigest()
     if args.input_sha256 and args.input_sha256.lower() != input_sha256:

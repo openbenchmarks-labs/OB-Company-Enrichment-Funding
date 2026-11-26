@@ -15,12 +15,12 @@ from urllib.parse import quote, urlparse
 from harness.nimble_search import contract_hash, validate_output
 
 
-VENDOR_SLUG = "nimble-agents"
-VENDOR_NAME = "Nimble Agents"
+VENDOR_SLUG = "nimble-agents-medium"
+VENDOR_NAME = "Nimble Agents (medium)"
 REQUIRED_ENV = ("NIMBLE_API_KEY",)
 RUNS_URL = "https://sdk.nimbleway.com/v2/agents/runs"
 USE_CASE = "enrichment"
-EFFORT = "high"
+EFFORT = "medium"
 RUN_TIMEOUT_S = 1800
 POLL_INTERVAL_S = 10
 REQUEST_TIMEOUT_S = 60

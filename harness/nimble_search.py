@@ -10,13 +10,12 @@ import time
 from datetime import date
 from typing import Any, Callable
 
-from openai import OpenAI
-
-from harness import nimble
+from harness import llm, nimble
 
 
 PROVIDERS = {"nimble-lite": "lite", "nimble-standard": "standard"}
-REQUIRED_ENV = ("NIMBLE_API_KEY", "OPENAI_API_KEY")
+# The extraction model also needs Azure OpenAI or OpenAI credentials (harness/llm.py).
+REQUIRED_ENV = ("NIMBLE_API_KEY",)
 EXTRACT_MODEL = "gpt-5.6-terra"
 REASONING_EFFORT = "medium"
 MAX_OUTPUT_TOKENS = 4000
@@ -93,6 +92,23 @@ def validate_output(value: Any, schema: dict[str, Any]) -> dict[str, Any]:
     return value
 
 
+def build_extraction_request(case: dict[str, str], query: str, hits: list[dict[str, Any]], schema: dict[str, Any]) -> dict[str, Any]:
+    """The extraction call that reads search results into the funding schema. Seltz Search uses it too."""
+    # Explicitly select identity fields: the CSV also contains human labels.
+    return {
+        "model": EXTRACT_MODEL, "reasoning": {"effort": REASONING_EFFORT},
+        "input": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps({
+                "company_name": case["company_name"], "company_domain": case["company_domain"],
+                "instruction": query, "results": hits,
+            })},
+        ],
+        "text": {"format": {"type": "json_schema", "name": "funding_event", "strict": True, "schema": schema}},
+        "max_output_tokens": MAX_OUTPUT_TOKENS, "store": False,
+    }
+
+
 def run(
     case: dict[str, str], depth: str, *, query: str, schema: dict[str, Any],
     search: Callable[..., dict[str, Any]],
@@ -108,7 +124,7 @@ def run(
         "status": "in_progress",
     }
     try:
-        missing = [key for key in REQUIRED_ENV if not os.environ.get(key)]
+        missing = [key for key in REQUIRED_ENV if not os.environ.get(key)] + llm.missing()
         if missing:
             raise RuntimeError(f"{', '.join(missing)} is required")
         if checkpoint:
@@ -132,24 +148,12 @@ def run(
             audit["status"] = "not_found"
             return {field: None for field in schema["properties"]}, audit
 
-        # Explicitly select identity fields: the CSV also contains human labels.
-        extraction_request = {
-            "model": EXTRACT_MODEL, "reasoning": {"effort": REASONING_EFFORT},
-            "input": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps({
-                    "company_name": case["company_name"], "company_domain": case["company_domain"],
-                    "instruction": query, "results": hits,
-                })},
-            ],
-            "text": {"format": {"type": "json_schema", "name": "funding_event", "strict": True, "schema": schema}},
-            "max_output_tokens": MAX_OUTPUT_TOKENS, "store": False,
-        }
+        extraction_request = build_extraction_request(case, query, hits, schema)
         audit["extraction_request"] = extraction_request
         if checkpoint:
             checkpoint(audit)
         started = time.perf_counter()
-        response = OpenAI(api_key=os.environ["OPENAI_API_KEY"], max_retries=0, timeout=EXTRACT_TIMEOUT).responses.create(**extraction_request)
+        response = llm.client(max_retries=0, timeout=EXTRACT_TIMEOUT).responses.create(**extraction_request)
         audit["extraction"] = {
             "response_id": response.id, "status": response.status, "output_text": response.output_text,
             "usage": response.usage.model_dump() if response.usage else None,
